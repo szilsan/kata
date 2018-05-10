@@ -1,5 +1,8 @@
 package com.szilsan.kata.happynumbers;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class HappyNumbers {
 
     // based on characters
@@ -21,37 +24,48 @@ public class HappyNumbers {
             return true;
         }
 
-        long sum = 0;
-        long processedNumber = number;
-        while (processedNumber > 0) {
-            long i = processedNumber % 10;
-            processedNumber /= 10;
-            sum += Math.pow(i, 2);
-        }
-
-        return isHappyNumber(sum);
+        return isHappyNumber(calcSumOfNumber(number));
     }
 
     public static boolean isHappyNumberNonRecursive(long number) {
         if (number == 1) {
             return true;
         }
-        long processedNumber = number;
-        long sum = 0;
+        long sum = number;
 
         do {
-            sum = 0;
-            while (processedNumber > 0) {
-                long i = processedNumber % 10;
-                processedNumber /= 10;
-                sum += Math.pow(i, 2);
-            }
-            processedNumber = sum;
+            sum = calcSumOfNumber(sum);
         } while (sum != 1);
 
         return true;
     }
 
+    public static boolean isHappyNumberWithMemoryChecking(long number) {
+        final Set<Long> usedNumbers = new HashSet<Long>();
+
+        long sum = number;
+        do {
+            sum = calcSumOfNumber(sum);
+
+            if (usedNumbers.contains(sum)) {
+                return false;
+            }
+            usedNumbers.add(sum);
+        } while (sum != 1);
+
+        return true;
+    }
+
+    private static long calcSumOfNumber(long number) {
+        long sum = 0;
+        long processeedNumber = number;
+        while (processeedNumber > 0) {
+            sum += Math.pow(processeedNumber % 10, 2);
+            processeedNumber = processeedNumber / 10;
+        }
+
+        return sum;
+    }
 
 
     public static void main(String[] args) {
