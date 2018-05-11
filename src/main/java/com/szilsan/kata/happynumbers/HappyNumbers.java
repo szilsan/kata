@@ -2,8 +2,21 @@ package com.szilsan.kata.happynumbers;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class HappyNumbers {
+
+    final private static Logger logger = Logger.getLogger("com.szilsan.kata.happynumbers.happyNumbers");
+
+    static {
+        Handler consoleHandler = new ConsoleHandler();
+        consoleHandler.setLevel(Level.ALL);
+        logger.addHandler(consoleHandler);
+        logger.setLevel(Level.FINE);
+    }
 
     // based on characters
     public static boolean isHappyNumberBasedOnChar(long number) {
@@ -56,17 +69,18 @@ public class HappyNumbers {
         return true;
     }
 
-    private static long calcSumOfNumber(long number) {
+    public static long calcSumOfNumber(final long number) {
         long sum = 0;
-        long processeedNumber = number;
+        long processeedNumber = Math.abs(number);
         while (processeedNumber > 0) {
             sum += Math.pow(processeedNumber % 10, 2);
             processeedNumber = processeedNumber / 10;
         }
 
+        logger.log(Level.FINE, "Number: " + number + " Sum: " + sum);
+
         return sum;
     }
-
 
     public static void main(String[] args) {
         System.out.println("hello world");
