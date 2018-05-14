@@ -1,36 +1,57 @@
 package com.szilsan.kata.calculator;
 
-import java.util.StringTokenizer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Calculator {
 
-    private static char divide = '\\';
-    private static char miltiply = '*';
-
-    private static char add = '+';
-    private static char sub = '-';
-
-
-    private static final char[] complex = new char[] {divide, miltiply};
-    private static final char[] simple = new char[] {add, sub};
+    private static final Pattern patternDevide = Pattern.compile("(\\d+(?:\\.\\d+)?)([/])([-]*\\d+(?:\\.\\d+)?)");
+    private static final Pattern patternMultiply = Pattern.compile("(\\d+(?:\\.\\d+)?)([*])([-]*\\d+(?:\\.\\d+)?)");
+    private static final Pattern patternAdd = Pattern.compile("(\\d+(?:\\.\\d+)?)([+])([-]*\\d+(?:\\.\\d+)?)");
+    private static final Pattern patternSub = Pattern.compile("([-]*\\d+(?:\\.\\d+)?)([-])([-]*\\d+(?:\\.\\d+)?)");
 
 
-    public static Double evaluate(String expression) {
-        double eval = 0;
-        if (expression.contains("" + add)) {
-            StringTokenizer st = new StringTokenizer(expression, "" + add);
-            while (st.hasMoreTokens()) {
-                eval += evaluate(st.nextToken());
-            }
-        } else if (expression.contains("" + sub)) {
-            StringTokenizer st = new StringTokenizer(expression, "" + sub);
-            while (st.hasMoreTokens()) {
-                eval -= evaluate(st.nextToken());
-            }
-        } else {
-            eval = Double.valueOf(expression.trim());
+    public static Double evaluate(final String expression) {
+        String processedExpression = expression;
+        processedExpression = processedExpression.replaceAll(" ", "");
+
+        // devide
+        Matcher m = patternDevide.matcher(processedExpression);
+        while (m.find()) {
+            String expr = m.group(0);
+            String value = "" + (Double.valueOf(m.group(1)) / Double.valueOf(m.group(3)));
+            processedExpression = processedExpression.replace(expr, value);
+            m = patternDevide.matcher(processedExpression);
         }
 
-        return eval;
+        // multiply
+        m = patternMultiply.matcher(processedExpression);
+        while (m.find()) {
+            String expr = m.group(0);
+            String value = "" + (Double.valueOf(m.group(1)) * Double.valueOf(m.group(3)));
+            processedExpression = processedExpression.replace(expr, value);
+            m = patternMultiply.matcher(processedExpression);
+        }
+
+        // sum
+        m = patternAdd.matcher(processedExpression);
+        while (m.find()) {
+            String expr = m.group(0);
+            String value = "" + (Double.valueOf(m.group(1)) + Double.valueOf(m.group(3)));
+            processedExpression = processedExpression.replace(expr, value);
+            m = patternAdd.matcher(processedExpression);
+        }
+
+        // sub
+        m = patternSub.matcher(processedExpression);
+        while (m.find()) {
+            String expr = m.group(0);
+            String value = "" + (Double.valueOf(m.group(1)) - Double.valueOf(m.group(3)));
+            processedExpression = processedExpression.replace(expr, value);
+            m = patternSub.matcher(processedExpression);
+        }
+
+        return Double.valueOf(processedExpression);
+
     }
 }
