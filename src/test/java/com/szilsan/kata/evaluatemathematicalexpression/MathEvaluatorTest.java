@@ -58,11 +58,11 @@ class MathEvaluatorTest {
 
         @Test
         public void testComplex3() {
-            assertEquals(new MathEvaluator().calculate("12* 123/-(-5 + 2)"), 7.732, 61);
+            assertEquals(new MathEvaluator().calculate("12* 123/-(-5 + 2)"), 492, 0.1);
         }
         @Test
 
         public void testComplex4() {
-            assertEquals(new MathEvaluator().calculate("(123.45*(678.90 / (-2.5+ 11.5)-(((80 -(19))) *33.25)) / 20) - (123.45*(678.90 / (-2.5+ 11.5)-(((80 -(19))) *33.25)) / 20) + (13 - 2)/ -(-11) "), 7.732, 61);
+            assertEquals(new MathEvaluator().calculate("(123.45*(678.90 / (-2.5+ 11.5)-(((80 -(19))) *33.25)) / 20) - (123.45*(678.90 / (-2.5+ 11.5)-(((80 -(19))) *33.25)) / 20) + (13 - 2)/ -(-11) "), 1, 61);
         }
 }
