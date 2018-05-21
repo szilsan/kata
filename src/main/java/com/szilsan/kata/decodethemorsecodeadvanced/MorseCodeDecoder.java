@@ -16,7 +16,7 @@ public class MorseCodeDecoder {
         String processingBits = removeNotNecessaryZeros(bits);
         int period = detectPeriod(processingBits, patternZeroFields);
         if (period == -1) {
-            detectPeriod(processingBits, patternOneFields);
+            period = processingBits.length();//detectPeriod(processingBits, patternOneFields);
         }
 
         String dot = new String(new char[period]).replace("\0", "1");
