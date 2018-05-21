@@ -11,12 +11,18 @@ public class MorseCodeDecoder {
 
     private static final Pattern patternZeroFields = Pattern.compile("[1]([0]+)");
     private static final Pattern patternOneFields = Pattern.compile("[0]*([1]+)");
+    private static final Pattern patternSignInWord = Pattern.compile("([1]+)[0]*");
 
     public static String decodeBits(String bits) {
+
         String processingBits = removeNotNecessaryZeros(bits);
-        int period = detectPeriod(processingBits, patternZeroFields);
+        int period = decideIfItIsSpecial(processingBits);
+
         if (period == -1) {
-            period = processingBits.length();//detectPeriod(processingBits, patternOneFields);
+            period = detectPeriod(processingBits, patternZeroFields);
+        }
+        if (period == -1) {
+            period = processingBits.length();
         }
 
         String dot = new String(new char[period]).replace("\0", "1");
@@ -30,11 +36,10 @@ public class MorseCodeDecoder {
                 .stream()
                 .map(i -> Arrays.asList(i.split(pauseChars))).collect(Collectors.toList());
 
-        Pattern signs = Pattern.compile("([1]+)[0]*");
         StringBuffer sb = new StringBuffer();
         for (List<String> token : tokens) {
             for (String s : token) {
-                Matcher mSigns = signs.matcher(s);
+                Matcher mSigns = patternSignInWord.matcher(s);
                 while (mSigns.find()) {
                     String sign = mSigns.group(1);
                     if (sign.equals(dot)) {
@@ -105,6 +110,31 @@ public class MorseCodeDecoder {
             } else {
                 return max.get().length();
             }
+        }
+
+        return -1;
+    }
+
+    private static int decideIfItIsSpecial(String bits) {
+        int maxZeros = getMaxToken(bits, patternZeroFields);
+        int maxOne = getMaxToken(bits, patternOneFields);
+        if (maxZeros != 1 && maxOne == maxZeros) {
+            return maxOne;
+        }
+        return -1;
+    }
+
+    private static int getMaxToken(final String bits, final Pattern pattern) {
+        final Matcher m = pattern.matcher(bits);
+        final List<String> groupsOfFields = new ArrayList<>();
+
+        while (m.find()) {
+            groupsOfFields.add(m.group(1));
+        }
+
+        final Optional<String> max = groupsOfFields.stream().max(Comparator.comparingInt(String::length));
+        if (max.isPresent()) {
+            return max.get().length();
         }
 
         return -1;

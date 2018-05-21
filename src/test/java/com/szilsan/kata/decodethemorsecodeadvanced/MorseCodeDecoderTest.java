@@ -11,8 +11,8 @@ public class MorseCodeDecoderTest {
 
     @Test
     public void test1() throws Exception {
-        //Assertions.assertTrue(MorseCodeDecoder.decodeMorse(MorseCodeDecoder.decodeBits("01110")).equals("E"));
-        //Assertions.assertTrue(MorseCodeDecoder.decodeMorse(MorseCodeDecoder.decodeBits("111")).equals("E"));
+        Assertions.assertTrue(MorseCodeDecoder.decodeMorse(MorseCodeDecoder.decodeBits("01110")).equals("E"));
+        Assertions.assertTrue(MorseCodeDecoder.decodeMorse(MorseCodeDecoder.decodeBits("111")).equals("E"));
         Assertions.assertTrue(MorseCodeDecoder.decodeMorse(MorseCodeDecoder.decodeBits("111000111")).equals("I"));
     }
 }
