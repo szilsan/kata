@@ -5,9 +5,12 @@ import java.util.stream.Collectors;
 
 public class SudokuSolver {
 
-    private static int stepCounter = 0;
+    // as there is no logger, a simple one is here
+    private static final boolean LOG_INPUT = false;
+    private static final boolean LOG_INIT_MATRIX = false;
+    private static final boolean LOG_SIMPLIFIED_MATRIX = false;
 
-    class Cell {
+    static class Cell {
         public final int row;
         public final int col;
         private final String id;
@@ -23,7 +26,8 @@ public class SudokuSolver {
             this.row = row;
             this.col = col;
             this.id = col + "" + row;
-            this.possibleValues.removeIf(e -> e.intValue() != initValue);
+            this.possibleValues.clear();
+            this.possibleValues.add(initValue);
         }
 
         public Set<Integer> getPossibleValues() {
@@ -32,6 +36,10 @@ public class SudokuSolver {
 
         public String getId() {
             return col + "" + row;
+        }
+
+        public boolean isFinal() {
+            return getPossibleValues().size() == 1;
         }
 
         @Override
@@ -65,44 +73,48 @@ public class SudokuSolver {
     }
 
     private final int[][] grid;
-    private List<List<Cell>> cells = new ArrayList<>(9);
+    private final List<List<Cell>> cells;
 
     public SudokuSolver(int[][] grid) {
-        stepCounter++;
-        System.out.println(stepCounter);
         this.grid = grid;
+
         initialInputValidation(grid);
-        initPossibleValues();
-        //System.out.println("Init matrix:");
-        this.printCurrentStatus();
-        System.out.println("Simplified matrix:");
+        cells = convertGridToCells(grid);
+        inputContentValidation();
+
+        if (LOG_INIT_MATRIX) {
+            System.out.println("Init matrix:");
+            this.printCurrentStatus();
+        }
         this.calculateEffects();
-        this.printCurrentStatus();
-        System.out.println("Initialization is done");
-        //System.out.println("================================================================================================");
+
+        if(LOG_SIMPLIFIED_MATRIX) {
+            System.out.println("Simplified matrix:");
+            this.printCurrentStatus();
+            System.out.println("Initialization is done");
+            System.out.println("================================================================================================");
+        }
     }
 
     public int[][] solve() {
 
         try {
-            validateFilledGrid(convertToGrid());
-            return convertToGrid();
+            validateFilledCells(this.cells);
+            return convertCellsToGrid(this.cells, true);
         } catch (Exception ex) {
             // we have to calculate
         }
-
-        int solutionCount = 0;
 
         for (int col = 0; col < cells.size(); col++) {
             for (int row = 0; row < cells.get(col).size(); row++) {
                 final Cell cell = cells.get(col).get(row);
                 if (cell.getPossibleValues().size() > 1) {
                     for (int possibility : cell.getPossibleValues()) {
-                        int[][] newGrid = convertToNewSudokuGrid();
+                        int[][] newGrid = convertCellsToGrid(this.cells, false);
                         newGrid[cell.col][cell.row] = possibility;
                         int[][] solution = new SudokuSolver(newGrid).solve();
                         if (solution != null) {
-                            solutionCount++;
+                            return solution;
                         }
                     }
                 } else if (cell.getPossibleValues().size() == 0) {
@@ -111,7 +123,7 @@ public class SudokuSolver {
             }
         }
 
-        return solutionCount == 0 ? null : convertToGrid();
+        return null;
     }
 
     void calculateEffects() {
@@ -137,7 +149,7 @@ public class SudokuSolver {
             }
 
             for (int row = 0; row < 9; row++) {
-                Set<Cell> setRow = getRow(row);
+                Set<Cell> setRow = getRow(this.cells, row);
                 for (Cell cell : setRow) {
                     if (cell.getPossibleValues().size() > 1) {
                         Set<Integer> sub = new HashSet<>();
@@ -156,7 +168,7 @@ public class SudokuSolver {
             }
 
             for (int col = 0; col < 9; col++) {
-                Set<Cell> setCol = getCol(col);
+                Set<Cell> setCol = getCol(this.cells, col);
                 for (Cell cell : setCol) {
                     if (cell.getPossibleValues().size() > 1) {
                         Set<Integer> sub = new HashSet<>();
@@ -177,7 +189,7 @@ public class SudokuSolver {
             // check the block
             for (int x = 0; x < 3; x++) {
                 for (int y = 0; y < 3; y++) {
-                    final Set<Cell> block = getBlock(x, y);
+                    final Set<Cell> block = getBlock(this.cells, x, y);
 
 
                     for (Cell cell : block) {
@@ -227,22 +239,7 @@ public class SudokuSolver {
         } while (modified);
     }
 
-    /**
-     * Fill up the possible values list with 1-9 and set the given values and set their's possible values to the given one
-     */
-    private void initPossibleValues() {
-        for (int col = 0; col < 9; col++) {
-            cells.add(new ArrayList<Cell>());
-            for (int row = 0; row < 9; row++) {
-                final int cellValue = grid[col][row];
-                if (cellValue != 0) {
-                    cells.get(col).add(row, new Cell(col, row, cellValue));
-                } else {
-                    cells.get(col).add(row, new Cell(col, row));
-                }
-            }
-        }
-    }
+
 
     /**
      * Initial grid validation - size, element values
@@ -250,6 +247,7 @@ public class SudokuSolver {
      * @param grid
      */
     static void initialInputValidation(int[][] grid) {
+
         if (grid == null) {
             throw new IllegalArgumentException();
         }
@@ -273,48 +271,40 @@ public class SudokuSolver {
         }
     }
 
-    /**
-     * Validate a filled grid - rows, columns, blocks are filled fine.
-     *
-     * @param grid
-     * @return
-     */
-    static boolean validateFilledGrid(int[][] grid) {
-
-        // validate columns
-        for (int[] col : grid) {
-            if (!validateFilledLine(col)) {
-                return false;
+    void inputContentValidation() {
+        for (int i =0; i < 9; i++ ) {
+            if (!validateFilled9Element(getRow(cells, i), true)) {
+                throw new IllegalArgumentException("Row is invalid: [" + i +"]");
+            }
+            if (!validateFilled9Element(getCol(cells, i), true)) {
+                throw new IllegalArgumentException("Col is invalid: [" + i +"]");
             }
         }
-
-        // validate rows
-        for (int rowNumber = 0; rowNumber < grid.length; rowNumber++) {
-            int[] row = new int[9];
-            for (int col = 0; col < grid[rowNumber].length; col++) {
-                row[col] = grid[col][rowNumber];
-            }
-
-            if (!validateFilledLine(row)) {
-                return false;
-            }
-        }
-
-        // validate blocks [3x3]
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
-                int[] block = new int[9];
-                block[0] = grid[i * 3][j * 3];
-                block[1] = grid[i * 3 + 1][j * 3];
-                block[2] = grid[i * 3 + 2][j * 3];
-                block[3] = grid[i * 3][j * 3 + 1];
-                block[4] = grid[i * 3 + 1][j * 3 + 1];
-                block[5] = grid[i * 3 + 2][j * 3 + 1];
-                block[6] = grid[i * 3][j * 3 + 2];
-                block[7] = grid[i * 3 + 1][j * 3 + 2];
-                block[8] = grid[i * 3 + 2][j * 3 + 2];
+                if (!validateFilled9Element(getBlock(cells, i, j), true)) {
+                    throw new IllegalArgumentException("Block is invalid: [" + i +"][" + j + "]");
+                }
+            }
+        }
+    }
 
-                if (!validateFilledLine(block)) {
+    /**
+     * Validate of a 9 elements block and throw exception if it is not valid
+     */
+    static boolean validateFilledCells(final List<List<Cell>> cells) {
+        boolean result = true;
+        for (int i =0; i < 9; i++ ) {
+            if (!validateFilled9Element(getRow(cells, i), false)) {
+                return false;
+            }
+            if (!validateFilled9Element(getCol(cells, i), false)) {
+                return false;
+            }
+        }
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                if (!validateFilled9Element(getBlock(cells, i, j), false)) {
                     return false;
                 }
             }
@@ -323,27 +313,20 @@ public class SudokuSolver {
     }
 
     /**
-     * Validate of 9 elements (all of them should be different
+     * Validate of 9 elements (all of them should be different)
      *
      * @param elements
+     * @param onlyFinals
      * @return
      */
-    static boolean validateFilledLine(final int[] elements) {
-        if (elements == null || elements.length != 9) {
+    static boolean validateFilled9Element(final Set<Cell> elements, final boolean onlyFinals) {
+        if (elements == null || elements.size() != 9) {
             return false;
         }
 
-        final Set<Integer> line = new HashSet<>();
-        for (int e : elements) {
-            if (e == 0 || !line.add(e)) {
-                return false;
-            }
-        }
-
-        return true;
+        final Set<Cell> finalCells = elements.parallelStream().filter(c -> onlyFinals ? c.isFinal() : true).collect(Collectors.toSet());
+        return finalCells.parallelStream().map(c -> c.getPossibleValues().iterator().next()).collect(Collectors.toSet()).size() == finalCells.size();
     }
-
-    // 9 times 3x3 block
 
     /**
      * Get a block
@@ -352,7 +335,7 @@ public class SudokuSolver {
      * @param row : 0-3
      * @return @Cells of the block
      */
-    Set<Cell> getBlock(final int col, final int row) {
+    static Set<Cell> getBlock(final List<List<Cell>> cells, final int col, final int row) {
         final Set<Cell> result = new HashSet<>(9);
 
         for (List<Cell> lstCol : cells) {
@@ -368,22 +351,26 @@ public class SudokuSolver {
         return result;
     }
 
-    Set<Cell> getRow(final int row) {
+    static Set<Cell> getRow(final List<List<Cell>> cells, final int row) {
         return cells.stream().flatMap(lst -> lst.stream().filter(c -> c.row == row)).collect(Collectors.toSet());
     }
 
-    Set<Cell> getCol(final int col) {
+    static Set<Cell> getCol(final List<List<Cell>> cells, final int col) {
         return cells.stream().flatMap(lst -> lst.stream().filter(c -> c.col == col)).collect(Collectors.toSet());
     }
 
-    int[][] convertToGrid() {
+    static int[][] convertCellsToGrid(final List<List<Cell>> cells, final boolean withValidationException) {
         int[][] result = new int[9][9];
 
         for (int col = 0; col < cells.size(); col++) {
             for (int row = 0; row < cells.get(col).size(); row++) {
                 final Cell cell = cells.get(col).get(row);
-                if (cell.getPossibleValues().size() != 1) {
-                    throw new IllegalArgumentException("Cell is invalid!");
+                if (!cell.isFinal()) {
+                    if (withValidationException) {
+                        throw new IllegalArgumentException("Cell is invalid!");
+                    } else {
+                        result[col][row] = 0;
+                    }
                 } else {
                     result[col][row] = cell.getPossibleValues().iterator().next();
                 }
@@ -393,21 +380,23 @@ public class SudokuSolver {
         return result;
     }
 
-    int[][] convertToNewSudokuGrid() {
-        int[][] result = new int[9][9];
-
-        for (int col = 0; col < cells.size(); col++) {
-            for (int row = 0; row < cells.get(col).size(); row++) {
-                final Cell cell = cells.get(col).get(row);
-                if (cell.getPossibleValues().size() != 1) {
-                    result[col][row] = 0;
+    /**
+     * Fill up the possible values list with 1-9 and set the given values and set their's possible values to the given one
+     */
+    static List<List<Cell>> convertGridToCells(int[][] grid) {
+        final List<List<Cell>> cells = new ArrayList<>(9);
+        for (int col = 0; col < 9; col++) {
+            cells.add(new ArrayList<Cell>());
+            for (int row = 0; row < 9; row++) {
+                final int cellValue = grid[col][row];
+                if (cellValue != 0) {
+                    cells.get(col).add(row, new Cell(col, row, cellValue));
                 } else {
-                    result[col][row] = cell.getPossibleValues().iterator().next();
+                    cells.get(col).add(row, new Cell(col, row));
                 }
             }
         }
-
-        return result;
+        return cells;
     }
 
     public void printCurrentStatus() {
