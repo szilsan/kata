@@ -3,6 +3,8 @@ package com.szilsan.kata.hardsudokusolver;
 import com.sun.source.tree.AssertTree;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -155,6 +157,37 @@ class SudokuSolverTest {
         assertArrayEquals(solution, new SudokuSolver(puzzle).solve());
     }
 
+    //@Test
+    void solveHard3() {
+
+        int[][] puzzle = {
+                {0, 4, 0, 0, 0, 0, 0, 0, 0},
+                {0, 7, 3, 0, 8, 0, 4, 6, 0},
+                {0, 0, 0, 0, 0, 0, 0, 3, 0},
+                {0, 9, 0, 7, 0, 0, 6, 0, 0},
+                {0, 0, 6, 0, 4, 0, 1, 0, 0},
+                {0, 5, 0, 6, 0, 8, 0, 0, 0},
+                {0, 0, 0, 4, 0, 3, 0, 5, 0},
+                {0, 0, 4, 0, 1, 0, 8, 0, 0},
+                {0, 0, 2, 0, 0, 5, 0, 1, 0}},
+
+                solution = {
+                        {5, 4, 1, 8, 6, 9, 3, 2, 7,},
+                        {3, 6, 9, 7, 2, 1, 8, 5, 4,},
+                        {7, 8, 2, 4, 3, 5, 6, 9, 1,},
+                        {9, 2, 3, 5, 1, 6, 4, 7, 8,},
+                        {1, 5, 8, 3, 4, 7, 9, 6, 2,},
+                        {4, 7, 6, 2, 9, 8, 5, 1, 3,},
+                        {8, 3, 7, 6, 5, 2, 1, 4, 9,},
+                        {6, 9, 4, 1, 7, 3, 2, 8, 5,},
+                        {2, 1, 5, 9, 8, 4, 7, 3, 6,}
+                };
+
+        int[][] sol = new SudokuSolver(puzzle).solve();
+
+        assertArrayEquals(solution, sol);
+    }
+
     @Test
     void solve() {
 
@@ -217,70 +250,6 @@ class SudokuSolverTest {
     }
 
     @Test
-    void testValidateValidSolution() {
-        int[][] solution = {
-                {3, 4, 6, 1, 2, 7, 9, 5, 8},
-                {7, 8, 5, 6, 9, 4, 1, 3, 2},
-                {2, 1, 9, 3, 8, 5, 4, 6, 7},
-                {4, 6, 2, 5, 3, 1, 8, 7, 9},
-                {9, 3, 1, 2, 7, 8, 6, 4, 5},
-                {8, 5, 7, 9, 4, 6, 2, 1, 3},
-                {5, 9, 8, 4, 1, 3, 7, 2, 6},
-                {6, 2, 4, 7, 5, 9, 3, 8, 1},
-                {1, 7, 3, 8, 6, 2, 5, 9, 4}};
-
-        assertTrue(new SudokuSolver(solution).validateFilledCells(SudokuSolver.convertGridToCells(solution)));
-    }
-
-    @Test
-    void testValidateValidSolution2() {
-        int[][] solution = {
-                {7, 2, 6, 4, 9, 3, 8, 1, 5},
-                {3, 1, 5, 7, 2, 8, 9, 4, 6},
-                {4, 8, 9, 6, 5, 1, 2, 3, 7},
-                {8, 5, 2, 1, 4, 7, 6, 9, 3},
-                {6, 7, 3, 9, 8, 5, 1, 2, 4},
-                {9, 4, 1, 3, 6, 2, 7, 5, 8},
-                {1, 9, 4, 8, 3, 6, 5, 7, 2},
-                {5, 6, 7, 2, 1, 4, 3, 8, 9},
-                {2, 3, 8, 5, 7, 9, 4, 6, 1}};
-
-        assertTrue(SudokuSolver.validateFilledCells(SudokuSolver.convertGridToCells(solution)));
-    }
-
-    @Test
-    void testValidateInvalidSolution() {
-        int[][] solution = {
-                {3, 4, 6, 1, 2, 7, 9, 2, 8},
-                {7, 8, 5, 6, 9, 4, 1, 3, 2},
-                {2, 1, 9, 3, 8, 5, 4, 6, 7},
-                {4, 6, 2, 5, 3, 1, 8, 7, 9},
-                {9, 3, 1, 2, 7, 8, 6, 4, 5},
-                {8, 5, 7, 9, 4, 6, 2, 1, 3},
-                {5, 9, 8, 4, 1, 3, 7, 2, 6},
-                {6, 2, 4, 7, 5, 9, 3, 8, 1},
-                {1, 7, 3, 8, 6, 2, 5, 9, 4}};
-
-        assertFalse(SudokuSolver.validateFilledCells(SudokuSolver.convertGridToCells(solution)));
-    }
-
-    @Test
-    void testValidateInvalidSolution2() {
-        int[][] solution = {
-                {3, 4, 6, 1, 2, 7, 9, 5, 8},
-                {7, 8, 5, 6, 9, 4, 1, 3, 2},
-                {2, 1, 9, 3, 8, 5, 4, 6, 7},
-                {4, 6, 2, 5, 3, 1, 8, 7, 9},
-                {9, 3, 1, 2, 7, 8, 6, 4, 5},
-                {8, 5, 7, 9, 4, 6, 2, 1, 3},
-                {5, 9, 8, 4, 1, 1, 7, 2, 6},
-                {6, 2, 4, 7, 5, 9, 3, 8, 1},
-                {1, 7, 3, 8, 6, 2, 5, 9, 4}};
-
-        assertFalse(SudokuSolver.validateFilledCells(SudokuSolver.convertGridToCells(solution)));
-    }
-
-    @Test
     void testGetBlock() {
         int[][] solution = {
                 {3, 4, 6, 1, 2, 7, 9, 5, 8},
@@ -335,5 +304,72 @@ class SudokuSolverTest {
 
         assertArrayEquals(solution, new SudokuSolver(solution).convertCellsToGrid(SudokuSolver.convertGridToCells(solution),true));
         assertArrayEquals(solution, new SudokuSolver(solution).convertCellsToGrid(SudokuSolver.convertGridToCells(solution),false));
+    }
+
+    @Test
+    void testValidateFinal9Elements() {
+        SudokuSolver.Cell cell1 = new SudokuSolver.Cell(1, 1, 1);
+        SudokuSolver.Cell cell2 = new SudokuSolver.Cell(2, 1, 2);
+        SudokuSolver.Cell cell3 = new SudokuSolver.Cell(3, 1, 3);
+        SudokuSolver.Cell cell4 = new SudokuSolver.Cell(4, 1, 4);
+        SudokuSolver.Cell cell5 = new SudokuSolver.Cell(5, 1, 5);
+        SudokuSolver.Cell cell6 = new SudokuSolver.Cell(6, 1, 6);
+        SudokuSolver.Cell cell7 = new SudokuSolver.Cell(7, 1, 7);
+        SudokuSolver.Cell cell8 = new SudokuSolver.Cell(8, 1, 8);
+        SudokuSolver.Cell cell9 = new SudokuSolver.Cell(9, 1, 9);
+        Set<SudokuSolver.Cell> cells = new HashSet<>(Arrays.asList(cell1, cell2, cell3, cell4, cell5, cell6, cell7, cell8, cell9));
+
+        assertTrue(SudokuSolver.validateFinal9Elements(cells));
+
+        cell1 = new SudokuSolver.Cell(1, 1, 2);
+        cells = new HashSet<>(Arrays.asList(cell1, cell2, cell3, cell4, cell5, cell6, cell7, cell8, cell9));
+        assertFalse(SudokuSolver.validateFinal9Elements(cells));
+
+        cell1 = null;
+        cells = new HashSet<>(Arrays.asList(cell1, cell2, cell3, cell4, cell5, cell6, cell7, cell8, cell9));
+        assertFalse(SudokuSolver.validateFinal9Elements(cells));
+
+        cells = new HashSet<>(Arrays.asList(cell1, cell2, cell3, cell4, cell5, cell6, cell7));
+        assertFalse(SudokuSolver.validateFinal9Elements(cells));
+
+        cell1 = new SudokuSolver.Cell(1, 1, 2);
+        cell2 = new SudokuSolver.Cell(1, 2, 2);
+        cells = new HashSet<>(Arrays.asList(cell1, cell2, cell3, cell4, cell5, cell6, cell7, cell8, cell9));
+        assertFalse(SudokuSolver.validateFinal9Elements(cells));
+    }
+
+    @Test
+    void testValidateNonFinal9Elements() {
+        SudokuSolver.Cell cell1 = new SudokuSolver.Cell(1, 1, 1);
+        SudokuSolver.Cell cell2 = new SudokuSolver.Cell(2, 2);
+        cell2.getPossibleValues().addAll(Arrays.asList(2,4,7));
+        SudokuSolver.Cell cell3 = new SudokuSolver.Cell(3, 1, 3);
+        SudokuSolver.Cell cell4 = new SudokuSolver.Cell(4, 1);
+        cell4.getPossibleValues().addAll(Arrays.asList(2,4,7));
+        SudokuSolver.Cell cell5 = new SudokuSolver.Cell(5, 1, 5);
+        SudokuSolver.Cell cell6 = new SudokuSolver.Cell(6, 1, 6);
+        SudokuSolver.Cell cell7 = new SudokuSolver.Cell(7, 1);
+        cell7.getPossibleValues().addAll(Arrays.asList(2,4,7));
+        SudokuSolver.Cell cell8 = new SudokuSolver.Cell(8, 1, 8);
+        SudokuSolver.Cell cell9 = new SudokuSolver.Cell(9, 1, 9);
+        Set<SudokuSolver.Cell> cells = new HashSet<>(Arrays.asList(cell1, cell2, cell3, cell4, cell5, cell6, cell7, cell8, cell9));
+
+        assertTrue(SudokuSolver.validateNonFinal9Elements(cells));
+
+        cell3.getPossibleValues().clear();
+        cell4.getPossibleValues().clear();
+        cell7.getPossibleValues().clear();
+
+        cell2.getPossibleValues().addAll(Arrays.asList(4,7));
+        cell4.getPossibleValues().addAll(Arrays.asList(4,7));
+        cell7.getPossibleValues().addAll(Arrays.asList(4,7));
+        assertFalse(SudokuSolver.validateFinal9Elements(cells));
+
+        cell7.getPossibleValues().clear();
+        cell7.getPossibleValues().addAll(Arrays.asList(3));
+        assertFalse(SudokuSolver.validateFinal9Elements(cells));
+
+        cell7.getPossibleValues().clear();
+        assertFalse(SudokuSolver.validateFinal9Elements(cells));
     }
 }

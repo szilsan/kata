@@ -10,6 +10,8 @@ public class SudokuSolver {
     private static final boolean LOG_INIT_MATRIX = false;
     private static final boolean LOG_SIMPLIFIED_MATRIX = false;
 
+    private static int counter = 0;
+
     static class Cell {
         public final int row;
         public final int col;
@@ -75,12 +77,21 @@ public class SudokuSolver {
     private final int[][] grid;
     private final List<List<Cell>> cells;
 
+    private Set<Set<Cell>> rows = new HashSet<>();
+    private Set<Set<Cell>> cols = new HashSet<>();
+    private Set<Set<Cell>> blocks = new HashSet<>();
+    private Set<Set<Cell>> unitsOf9 = new HashSet<>(27);
+
+    // calculated rows, cols, blocks - helps for being faster
+
     public SudokuSolver(int[][] grid) {
+        //System.out.println("Counter: " + counter++);
         this.grid = grid;
 
         initialInputValidation(grid);
         cells = convertGridToCells(grid);
         inputContentValidation();
+        splitCellsIntoColsRowsBlocks();
 
         if (LOG_INIT_MATRIX) {
             System.out.println("Init matrix:");
@@ -88,7 +99,7 @@ public class SudokuSolver {
         }
         this.calculateEffects();
 
-        if(LOG_SIMPLIFIED_MATRIX) {
+        if (LOG_SIMPLIFIED_MATRIX) {
             System.out.println("Simplified matrix:");
             this.printCurrentStatus();
             System.out.println("Initialization is done");
@@ -98,12 +109,15 @@ public class SudokuSolver {
 
     public int[][] solve() {
 
-        try {
-            validateFilledCells(this.cells);
+        if (validateFinalMatrix()) {
             return convertCellsToGrid(this.cells, true);
-        } catch (Exception ex) {
-            // we have to calculate
         }
+
+        if (!validateNonFinalMatrix()) {
+            return null;
+        }
+
+        int[][] solution = null;
 
         for (int col = 0; col < cells.size(); col++) {
             for (int row = 0; row < cells.get(col).size(); row++) {
@@ -112,7 +126,7 @@ public class SudokuSolver {
                     for (int possibility : cell.getPossibleValues()) {
                         int[][] newGrid = convertCellsToGrid(this.cells, false);
                         newGrid[cell.col][cell.row] = possibility;
-                        int[][] solution = new SudokuSolver(newGrid).solve();
+                        solution = new SudokuSolver(newGrid).solve();
                         if (solution != null) {
                             return solution;
                         }
@@ -129,101 +143,43 @@ public class SudokuSolver {
     void calculateEffects() {
         boolean modified = false;
         do {
-            modified = false;
-            for (List<Cell> lstCol : cells) {
-                for (Cell cell : lstCol) {
-                    if (cell.possibleValues.size() == 1) {
-                        final int value = cell.getPossibleValues().iterator().next();
-                        // remove from its row and col
-                        for (List<Cell> lstColInner : cells) {
-                            for (Cell cellInner : lstColInner) {
-                                if (!cellInner.equals(cell) && (cellInner.row == cell.row || cellInner.col == cell.col)) {
-                                    if (cellInner.getPossibleValues().remove(value)) {
-                                        modified = true;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+            if (LOG_SIMPLIFIED_MATRIX) {
+                printCurrentStatus();
             }
 
-            for (int row = 0; row < 9; row++) {
-                Set<Cell> setRow = getRow(this.cells, row);
-                for (Cell cell : setRow) {
-                    if (cell.getPossibleValues().size() > 1) {
-                        Set<Integer> sub = new HashSet<>();
-                        for (Cell cellInner : setRow) {
-                            if (!cellInner.equals(cell)) {
-                                sub.removeAll(cellInner.possibleValues);
-                            }
-                        }
-                        if (sub.size() == 1) {
-                            modified = true;
-                            cell.getPossibleValues().clear();
-                            cell.getPossibleValues().add(sub.iterator().next());
-                        }
-                    }
-                }
+            int[][] startGrid = convertCellsToGrid(this.cells, false);
+
+            for (Set<Cell> unitOf9 : unitsOf9) {
+                unitOf9.stream().forEach(c -> removeCellValuesFromAll(c, unitOf9)); // remove single single values
+                findSinglePossibility(unitOf9); // check if there is only one possibility for a number
             }
 
-            for (int col = 0; col < 9; col++) {
-                Set<Cell> setCol = getCol(this.cells, col);
-                for (Cell cell : setCol) {
-                    if (cell.getPossibleValues().size() > 1) {
-                        Set<Integer> sub = new HashSet<>();
-                        for (Cell cellInner : setCol) {
-                            if (!cellInner.equals(cell)) {
-                                sub.removeAll(cellInner.possibleValues);
-                            }
-                        }
-                        if (sub.size() == 1) {
-                            modified = true;
-                            cell.getPossibleValues().clear();
-                            cell.getPossibleValues().add(sub.iterator().next());
-                        }
-                    }
-                }
-            }
-
+            // check: if 2 cells have the same possibilities in the 9, these 2 can be removed from all the others
             // check the block
-            for (int x = 0; x < 3; x++) {
-                for (int y = 0; y < 3; y++) {
-                    final Set<Cell> block = getBlock(this.cells, x, y);
+
+            /*
+            for (Set<Cell> block : blocks) {
+                block.stream().filter(c -> c.getPossibleValues().size() == 2).
+                        forEach(c -> block.stream().filter(cIn ->
+                                !c.getId().equals(cIn.getId()) &&
+                                c.getPossibleValues().size() != cIn.getPossibleValues().size() &&
+                                c.getPossibleValues().containsAll(cIn.getPossibleValues())));
+
+            }
 
 
-                    for (Cell cell : block) {
-                        // remove unique one from each
-                        if (cell.possibleValues.size() == 1) {
-                            final int value = cell.getPossibleValues().iterator().next();
-                            for (Cell cellInner : block) {
-                                if (!cellInner.equals(cell)) {
-                                    if (cellInner.getPossibleValues().remove(value)) {
-                                        modified = true;
-                                    }
-                                }
-                            }
-                        } else {
-                            // check if one contains the possibility for a number
-                            final Set<Integer> sub = new HashSet<>(cell.getPossibleValues());
-                            for (Cell cellInner : block) {
-                                if (!cellInner.equals(cell)) {
-                                    sub.removeAll(cellInner.possibleValues);
-                                }
-                            }
-                            if (sub.size() == 1) {
-                                modified = true;
-                                cell.getPossibleValues().clear();
-                                cell.getPossibleValues().add(sub.iterator().next());
-                            }
+             */
+            for (Set<Cell> block : blocks) {
+                for (Cell cell : block) {
+                    // remove unique one from each
+                    if (!cell.isFinal()) {
 
-                            // ha a blockben barmely 2 cellaban a lehetseges elemek kozott ugyanaz a 2, vagy barmely 3-ban ugyanaz a 3 stb elem van, akkor azokat a tobbibol ki lehet vonni
-                            final Set<Integer> same = new HashSet<>(cell.getPossibleValues());
-                            for (Cell cellInner : block) {
-                                if (!cellInner.equals(cell)) {
-                                    if (cellInner.getPossibleValues().size() == 2 && cellInner.getPossibleValues().size() == cell.getPossibleValues().size() && cellInner.getPossibleValues().containsAll(cell.getPossibleValues())) {
-                                        block.stream().filter(c -> !c.equals(cell) && !c.equals(cellInner)).forEach(c -> c.getPossibleValues().removeAll(cell.getPossibleValues()));
-                                    }
+                        // ha a blockben barmely 2 cellaban a lehetseges elemek kozott ugyanaz a 2, vagy barmely 3-ban ugyanaz a 3 stb elem van, akkor azokat a tobbibol ki lehet vonni
+                        final Set<Integer> same = new HashSet<>(cell.getPossibleValues());
+                        for (Cell cellInner : block) {
+                            if (!cellInner.equals(cell)) {
+                                if (cellInner.getPossibleValues().size() == 2 && cellInner.getPossibleValues().size() == cell.getPossibleValues().size() && cellInner.getPossibleValues().containsAll(cell.getPossibleValues())) {
+                                    block.stream().filter(c -> !c.equals(cell) && !c.equals(cellInner)).forEach(c -> c.getPossibleValues().removeAll(cell.getPossibleValues()));
                                 }
                             }
                         }
@@ -231,15 +187,54 @@ public class SudokuSolver {
                 }
             }
 
-
-            if (modified) {
-                // this.printCurrentStatus();
-                // System.out.println("------------------------------------------------------------------------------------------------------------------");
-            }
-        } while (modified);
+            //printCurrentStatus();
+            int[][] endGrid = convertCellsToGrid(this.cells, false);
+            modified = !Arrays.deepEquals(startGrid, endGrid);
+        } while (validateNonFinalMatrix() && modified);
     }
 
+    private void findSinglePossibility(final Set<Cell> row) {
+        final Set<Integer> sub = new HashSet<>();
+        row.stream().forEach(
+                c -> {
+                    sub.clear();
+                    sub.addAll(c.getPossibleValues());
+                    row.stream().filter(cIn -> !cIn.getId().equals(c.getId())).forEach(cIn2 -> sub.removeAll(cIn2.getPossibleValues()));
+                    if (sub.size() == 1) {
+                        c.getPossibleValues().clear();
+                        c.getPossibleValues().addAll(sub);
+                    }
+                });
+    }
 
+    private void splitCellsIntoColsRowsBlocks() {
+        for (int i = 0; i < 9; i++) {
+            rows.add(getRow(this.cells, i));
+            cols.add(getCol(this.cells, i));
+        }
+
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                blocks.add(getBlock(this.cells, i, j));
+            }
+        }
+
+        unitsOf9.addAll(rows);
+        unitsOf9.addAll(cols);
+        unitsOf9.addAll(blocks);
+    }
+
+    void inputContentValidation() {
+        if (!validateNonFinalMatrix()) {
+            throw new IllegalArgumentException("Invalid input");
+        }
+    }
+
+    void removeCellValuesFromAll(final Cell cell, final Set<Cell> lst) {
+        if (cell.isFinal()) {
+            lst.stream().filter(c -> !c.getId().equals(cell.id)).forEach(c -> c.getPossibleValues().removeAll(cell.getPossibleValues()));
+        }
+    }
 
     /**
      * Initial grid validation - size, element values
@@ -271,42 +266,25 @@ public class SudokuSolver {
         }
     }
 
-    void inputContentValidation() {
-        for (int i =0; i < 9; i++ ) {
-            if (!validateFilled9Element(getRow(cells, i), true)) {
-                throw new IllegalArgumentException("Row is invalid: [" + i +"]");
-            }
-            if (!validateFilled9Element(getCol(cells, i), true)) {
-                throw new IllegalArgumentException("Col is invalid: [" + i +"]");
-            }
-        }
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                if (!validateFilled9Element(getBlock(cells, i, j), true)) {
-                    throw new IllegalArgumentException("Block is invalid: [" + i +"][" + j + "]");
-                }
+    /**
+     * Validate of a 9 elements units for non final
+     */
+    boolean validateNonFinalMatrix() {
+        for (Set<Cell> unitOf9 : unitsOf9) {
+            if (!validateNonFinal9Elements(unitOf9)) {
+                return false;
             }
         }
+        return true;
     }
 
     /**
-     * Validate of a 9 elements block and throw exception if it is not valid
+     * Validate of a 9 elements units for non final
      */
-    static boolean validateFilledCells(final List<List<Cell>> cells) {
-        boolean result = true;
-        for (int i =0; i < 9; i++ ) {
-            if (!validateFilled9Element(getRow(cells, i), false)) {
+    boolean validateFinalMatrix() {
+        for (Set<Cell> unitOf9 : unitsOf9) {
+            if (!validateFinal9Elements(unitOf9)) {
                 return false;
-            }
-            if (!validateFilled9Element(getCol(cells, i), false)) {
-                return false;
-            }
-        }
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                if (!validateFilled9Element(getBlock(cells, i, j), false)) {
-                    return false;
-                }
             }
         }
         return true;
@@ -316,25 +294,43 @@ public class SudokuSolver {
      * Validate of 9 elements (all of them should be different)
      *
      * @param elements
-     * @param onlyFinals
      * @return
      */
-    static boolean validateFilled9Element(final Set<Cell> elements, final boolean onlyFinals) {
+    static boolean validateNonFinal9Elements(final Set<Cell> elements) {
         if (elements == null || elements.size() != 9) {
             return false;
         }
 
-        final Set<Cell> finalCells = elements.parallelStream().filter(c -> onlyFinals ? c.isFinal() : true).collect(Collectors.toSet());
-        return finalCells.parallelStream().map(c -> c.getPossibleValues().iterator().next()).collect(Collectors.toSet()).size() == finalCells.size();
+        final Set<Integer> numbers = new HashSet<>(9);
+        for (Cell cell : elements) {
+            if (cell.getPossibleValues().size() == 0) {
+                return false;
+            }
+            for (Cell cellIn : elements) {
+                if (!cellIn.getId().equals(cell.getId()) && cellIn.isFinal() && cell.isFinal() && cellIn.getPossibleValues().iterator().next().intValue() == cell.getPossibleValues().iterator().next().intValue()) {
+                    return false;
+                }
+            }
+
+            numbers.addAll(cell.getPossibleValues());
+        }
+        return numbers.size() == elements.size();
     }
 
-    /**
-     * Get a block
-     *
-     * @param col : 0-3
-     * @param row : 0-3
-     * @return @Cells of the block
-     */
+    static boolean validateFinal9Elements(final Set<Cell> elements) {
+        final Set<Integer> numbers = new HashSet<>(9);
+        if (elements == null || elements.size() != 9) {
+            return false;
+        }
+        for (final Cell cell : elements) {
+            if (cell == null || !cell.isFinal()) {
+                return false;
+            }
+            numbers.addAll(cell.getPossibleValues());
+        }
+        return numbers.size() == 9;
+    }
+
     static Set<Cell> getBlock(final List<List<Cell>> cells, final int col, final int row) {
         final Set<Cell> result = new HashSet<>(9);
 
@@ -406,5 +402,6 @@ public class SudokuSolver {
             }
             System.out.println();
         }
+        System.out.println();
     }
 }
