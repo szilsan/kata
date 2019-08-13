@@ -9,6 +9,7 @@ public class SudokuSolver {
     private static final boolean LOG_INPUT = false;
     private static final boolean LOG_INIT_MATRIX = false;
     private static final boolean LOG_SIMPLIFIED_MATRIX = false;
+    private static final boolean LOG_SIMPLIFIED_DETAILS = false;
 
     private static int counter = 0;
 
@@ -17,6 +18,14 @@ public class SudokuSolver {
         public final int col;
         private final String id;
         private final Set<Integer> possibleValues = new HashSet<>(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9));
+
+        public Cell(final Cell cell) {
+            this.row = cell.row;
+            this.col = cell.col;
+            this.id = col + "" + row;
+            this.getPossibleValues().clear();
+            this.getPossibleValues().addAll(cell.getPossibleValues());
+        }
 
         public Cell(final int col, final int row) {
             this.row = row;
@@ -42,6 +51,10 @@ public class SudokuSolver {
 
         public boolean isFinal() {
             return getPossibleValues().size() == 1;
+        }
+
+        public String fullToString() {
+            return "[" + this.col + "][" + this.row + "]" + toString();
         }
 
         @Override
@@ -81,15 +94,32 @@ public class SudokuSolver {
     private Set<Set<Cell>> cols = new HashSet<>();
     private Set<Set<Cell>> blocks = new HashSet<>();
     private Set<Set<Cell>> unitsOf9 = new HashSet<>(27);
+    private Set<Cell> allCells = new HashSet<>(27);
 
     // calculated rows, cols, blocks - helps for being faster
 
-    public SudokuSolver(int[][] grid) {
-        //System.out.println("Counter: " + counter++);
+    public SudokuSolver(int[][] grid, boolean init) {
         this.grid = grid;
-
         initialInputValidation(grid);
-        cells = convertGridToCells(grid);
+        this.cells = convertGridToCells(grid);
+        if (init) {
+            init();
+        }
+    }
+
+    public SudokuSolver(int[][] grid) {
+        this(grid, true);
+    }
+
+    public SudokuSolver(final List<List<Cell>> cells) {
+        this.cells = cells;
+        this.grid = convertCellsToGrid(cells, false);
+        init();
+    }
+
+
+    private void init() {
+        System.out.println("Counter: " + counter++);
         inputContentValidation();
         splitCellsIntoColsRowsBlocks();
 
@@ -107,69 +137,58 @@ public class SudokuSolver {
         }
     }
 
+
     public int[][] solve() {
 
         if (validateFinalMatrix()) {
+            System.out.println("Valid final");
             return convertCellsToGrid(this.cells, true);
         }
 
         if (!validateNonFinalMatrix()) {
+            System.out.println("Invalid non-final");
             return null;
         }
 
         int[][] solution = null;
+        final List<Cell> orderedByPossibilities = allCells.stream().filter(c -> !c.isFinal()).sorted((c1, c2) -> Integer.valueOf(c1.getPossibleValues().size()).compareTo(c2.getPossibleValues().size())).collect(Collectors.toList());
 
-        for (int col = 0; col < cells.size(); col++) {
-            for (int row = 0; row < cells.get(col).size(); row++) {
-                final Cell cell = cells.get(col).get(row);
-                if (cell.getPossibleValues().size() > 1) {
-                    for (int possibility : cell.getPossibleValues()) {
-                        int[][] newGrid = convertCellsToGrid(this.cells, false);
-                        newGrid[cell.col][cell.row] = possibility;
-                        solution = new SudokuSolver(newGrid).solve();
-                        if (solution != null) {
-                            return solution;
-                        }
-                    }
-                } else if (cell.getPossibleValues().size() == 0) {
-                    return null;
+        for (Cell cell : orderedByPossibilities) {
+            for (int possibility : cell.getPossibleValues()) {
+                System.out.println("Simplify with cell "+ cell.fullToString() + "  " + possibility);
+                int[][] newGrid = convertCellsToGrid(this.cells, false);
+                newGrid[cell.col][cell.row] = possibility;
+
+                List<List<Cell>> newCells = cloneAllCells(this.cells);
+                newCells.get(cell.col).get(cell.row).getPossibleValues().clear();
+                newCells.get(cell.col).get(cell.row).getPossibleValues().add(possibility);
+
+                solution = new SudokuSolver(newCells).solve();
+                if (solution != null) {
+                    return solution;
                 }
             }
         }
-
         return null;
-    }
+}
 
     void calculateEffects() {
         boolean modified = false;
         do {
-            if (LOG_SIMPLIFIED_MATRIX) {
+            if (LOG_SIMPLIFIED_DETAILS) {
                 printCurrentStatus();
             }
 
             int[][] startGrid = convertCellsToGrid(this.cells, false);
 
+            removeUniqueFromUnitsOf9(); // remove single single values - unique candidate
             for (Set<Cell> unitOf9 : unitsOf9) {
-                unitOf9.stream().forEach(c -> removeCellValuesFromAll(c, unitOf9)); // remove single single values
                 findSinglePossibility(unitOf9); // check if there is only one possibility for a number
             }
 
             // check: if 2 cells have the same possibilities in the 9, these 2 can be removed from all the others
-            // check the block
-
-            /*
-            for (Set<Cell> block : blocks) {
-                block.stream().filter(c -> c.getPossibleValues().size() == 2).
-                        forEach(c -> block.stream().filter(cIn ->
-                                !c.getId().equals(cIn.getId()) &&
-                                c.getPossibleValues().size() != cIn.getPossibleValues().size() &&
-                                c.getPossibleValues().containsAll(cIn.getPossibleValues())));
-
-            }
-
-
-             */
-            for (Set<Cell> block : blocks) {
+            // naked subset
+            for (Set<Cell> block : unitsOf9) {
                 for (Cell cell : block) {
                     // remove unique one from each
                     if (!cell.isFinal()) {
@@ -193,7 +212,19 @@ public class SudokuSolver {
         } while (validateNonFinalMatrix() && modified);
     }
 
-    private void findSinglePossibility(final Set<Cell> row) {
+    void removeUniqueFromUnitOf9(final Set<Cell> unitOf9) {
+        unitOf9.stream().filter(c -> c.isFinal()).
+                forEach(c -> unitOf9.stream().filter(cIn -> !c.getId().equals(cIn.id)).
+                    forEach(cIn -> cIn.getPossibleValues().removeAll(c.getPossibleValues())));
+    }
+
+    void removeUniqueFromUnitsOf9() {
+        for (Set<Cell> unitOf9 : unitsOf9) {
+            removeUniqueFromUnitOf9(unitOf9);
+        }
+    }
+
+    void findSinglePossibility(final Set<Cell> row) {
         final Set<Integer> sub = new HashSet<>();
         row.stream().forEach(
                 c -> {
@@ -207,7 +238,7 @@ public class SudokuSolver {
                 });
     }
 
-    private void splitCellsIntoColsRowsBlocks() {
+    void splitCellsIntoColsRowsBlocks() {
         for (int i = 0; i < 9; i++) {
             rows.add(getRow(this.cells, i));
             cols.add(getCol(this.cells, i));
@@ -222,6 +253,7 @@ public class SudokuSolver {
         unitsOf9.addAll(rows);
         unitsOf9.addAll(cols);
         unitsOf9.addAll(blocks);
+        unitsOf9.stream().forEach(unitOf9 -> allCells.addAll(unitOf9));
     }
 
     void inputContentValidation() {
@@ -257,12 +289,19 @@ public class SudokuSolver {
             }
         }
 
+        int countOfNumbers = 0;
         for (int[] row : grid) {
             for (int element : row) {
                 if (element < 0 || element > 9) {
                     throw new IllegalArgumentException();
+                } else if (element != 0) {
+                    countOfNumbers++;
                 }
             }
+        }
+
+        if (countOfNumbers < 17) {
+            throw new IllegalArgumentException();
         }
     }
 
@@ -355,6 +394,10 @@ public class SudokuSolver {
         return cells.stream().flatMap(lst -> lst.stream().filter(c -> c.col == col)).collect(Collectors.toSet());
     }
 
+    int[][] convertCellsToGrid(final boolean withValidationException) {
+        return SudokuSolver.convertCellsToGrid(this.cells, withValidationException);
+    }
+
     static int[][] convertCellsToGrid(final List<List<Cell>> cells, final boolean withValidationException) {
         int[][] result = new int[9][9];
 
@@ -393,6 +436,19 @@ public class SudokuSolver {
             }
         }
         return cells;
+    }
+
+    static List<List<Cell>> cloneAllCells(final List<List<Cell>> cells) {
+        List<List<Cell>> clonedCells = new ArrayList<List<Cell>>();
+        for (final List<Cell> col : cells) {
+            final ArrayList<Cell> newCol= new ArrayList<Cell>(9);
+            clonedCells.add(newCol);
+            for (Cell c: col) {
+                newCol.add(new Cell(c));
+            }
+        }
+
+        return clonedCells;
     }
 
     public void printCurrentStatus() {

@@ -17,4 +17,5 @@ Or it should raise an error in cases of: invalid grid (not 9x9, cell with values
 
 Java users: throw an IllegalArgumentException for unsolvable or invalid puzzles or when a puzzle has mutliple solutions.
 
-09.08.2019 14:00 tests takes 262ms (logging) 167 (no log)
+
+Help for myself: https://www.kristanix.com/sudokuepic/sudoku-solving-techniques.php
