@@ -8,8 +8,6 @@ import org.junit.platform.suite.api.SelectPackages;
 import org.junit.runner.RunWith;
 
 @RunWith(JUnitPlatform.class)
-@SelectPackages({"com.szilsan.kata.hardsudokusolver"})
-@ExcludeTags("ignored")
-@ExcludeClassNamePatterns({"^.*Solving$"})
+@SelectClasses({com.szilsan.kata.hardsudokusolver.TestMatrixValidation.class, TestCell.class})
 public class SudokeTestSuite {
 }

@@ -13,80 +13,6 @@ public class SudokuSolver {
 
     private static int counter = 0;
 
-    static class Cell {
-        public final int row;
-        public final int col;
-        private final String id;
-        private final Set<Integer> possibleValues = new HashSet<>(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9));
-
-        public Cell(final Cell cell) {
-            this.row = cell.row;
-            this.col = cell.col;
-            this.id = col + "" + row;
-            this.getPossibleValues().clear();
-            this.getPossibleValues().addAll(cell.getPossibleValues());
-        }
-
-        public Cell(final int col, final int row) {
-            this.row = row;
-            this.col = col;
-            this.id = col + "" + row;
-        }
-
-        public Cell(final int col, final int row, final int initValue) {
-            this.row = row;
-            this.col = col;
-            this.id = col + "" + row;
-            this.possibleValues.clear();
-            this.possibleValues.add(initValue);
-        }
-
-        public Set<Integer> getPossibleValues() {
-            return possibleValues;
-        }
-
-        public String getId() {
-            return col + "" + row;
-        }
-
-        public boolean isFinal() {
-            return getPossibleValues().size() == 1;
-        }
-
-        public String fullToString() {
-            return "[" + this.col + "][" + this.row + "]" + toString();
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            Cell cell = (Cell) o;
-            return id.equals(cell.id);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(id);
-        }
-
-        @Override
-        public String toString() {
-            final StringBuilder ret = new StringBuilder();
-            ret.append("[");
-
-            for (int pv : possibleValues) {
-                ret.append(pv + ",");
-            }
-            for (int i = possibleValues.size(); i < 9; i++) {
-                ret.append(" ,");
-            }
-
-            ret.append("]");
-            return ret.toString();
-        }
-    }
-
     private final int[][] grid;
     private final List<List<Cell>> cells;
 
@@ -155,13 +81,13 @@ public class SudokuSolver {
 
         for (Cell cell : orderedByPossibilities) {
             for (int possibility : cell.getPossibleValues()) {
-                System.out.println("Simplify with cell "+ cell.fullToString() + "  " + possibility);
+                System.out.println("Simplify with cell " + cell.fullToString() + "  " + possibility);
                 int[][] newGrid = convertCellsToGrid(this.cells, false);
-                newGrid[cell.col][cell.row] = possibility;
+                newGrid[cell.getCol()][cell.getRow()] = possibility;
 
                 List<List<Cell>> newCells = cloneAllCells(this.cells);
-                newCells.get(cell.col).get(cell.row).getPossibleValues().clear();
-                newCells.get(cell.col).get(cell.row).getPossibleValues().add(possibility);
+                newCells.get(cell.getCol()).get(cell.getRow()).getPossibleValues().clear();
+                newCells.get(cell.getCol()).get(cell.getRow()).getPossibleValues().add(possibility);
 
                 solution = new SudokuSolver(newCells).solve();
                 if (solution != null) {
@@ -170,7 +96,7 @@ public class SudokuSolver {
             }
         }
         return null;
-}
+    }
 
     void calculateEffects() {
         boolean modified = false;
@@ -214,8 +140,8 @@ public class SudokuSolver {
 
     void removeUniqueFromUnitOf9(final Set<Cell> unitOf9) {
         unitOf9.stream().filter(c -> c.isFinal()).
-                forEach(c -> unitOf9.stream().filter(cIn -> !c.getId().equals(cIn.id)).
-                    forEach(cIn -> cIn.getPossibleValues().removeAll(c.getPossibleValues())));
+                forEach(c -> unitOf9.stream().filter(cIn -> !c.getId().equals(cIn.getId())).
+                        forEach(cIn -> cIn.getPossibleValues().removeAll(c.getPossibleValues())));
     }
 
     void removeUniqueFromUnitsOf9() {
@@ -264,7 +190,7 @@ public class SudokuSolver {
 
     void removeCellValuesFromAll(final Cell cell, final Set<Cell> lst) {
         if (cell.isFinal()) {
-            lst.stream().filter(c -> !c.getId().equals(cell.id)).forEach(c -> c.getPossibleValues().removeAll(cell.getPossibleValues()));
+            lst.stream().filter(c -> !c.getId().equals(cell.getId())).forEach(c -> c.getPossibleValues().removeAll(cell.getPossibleValues()));
         }
     }
 
@@ -375,8 +301,8 @@ public class SudokuSolver {
 
         for (List<Cell> lstCol : cells) {
             for (Cell cell : lstCol) {
-                if (cell.col >= col * 3 && cell.col < (col + 1) * 3) {
-                    if (cell.row >= row * 3 && cell.row < (row + 1) * 3) {
+                if (cell.getCol() >= col * 3 && cell.getCol() < (col + 1) * 3) {
+                    if (cell.getRow() >= row * 3 && cell.getRow() < (row + 1) * 3) {
                         result.add(cell);
                     }
                 }
@@ -387,11 +313,11 @@ public class SudokuSolver {
     }
 
     static Set<Cell> getRow(final List<List<Cell>> cells, final int row) {
-        return cells.stream().flatMap(lst -> lst.stream().filter(c -> c.row == row)).collect(Collectors.toSet());
+        return cells.stream().flatMap(lst -> lst.stream().filter(c -> c.getRow() == row)).collect(Collectors.toSet());
     }
 
     static Set<Cell> getCol(final List<List<Cell>> cells, final int col) {
-        return cells.stream().flatMap(lst -> lst.stream().filter(c -> c.col == col)).collect(Collectors.toSet());
+        return cells.stream().flatMap(lst -> lst.stream().filter(c -> c.getCol() == col)).collect(Collectors.toSet());
     }
 
     int[][] convertCellsToGrid(final boolean withValidationException) {
@@ -429,7 +355,7 @@ public class SudokuSolver {
             for (int row = 0; row < 9; row++) {
                 final int cellValue = grid[col][row];
                 if (cellValue != 0) {
-                    cells.get(col).add(row, new Cell(col, row, cellValue));
+                    cells.get(col).add(row, new Cell(col, row, new HashSet<>(Arrays.asList(cellValue))));
                 } else {
                     cells.get(col).add(row, new Cell(col, row));
                 }
@@ -441,9 +367,9 @@ public class SudokuSolver {
     static List<List<Cell>> cloneAllCells(final List<List<Cell>> cells) {
         List<List<Cell>> clonedCells = new ArrayList<List<Cell>>();
         for (final List<Cell> col : cells) {
-            final ArrayList<Cell> newCol= new ArrayList<Cell>(9);
+            final ArrayList<Cell> newCol = new ArrayList<Cell>(9);
             clonedCells.add(newCol);
-            for (Cell c: col) {
+            for (Cell c : col) {
                 newCol.add(new Cell(c));
             }
         }
@@ -459,5 +385,257 @@ public class SudokuSolver {
             System.out.println();
         }
         System.out.println();
+    }
+}
+
+class SudokeTechnics {
+
+}
+
+class SudokeConverter {
+    public static Set<Cell> convertGroupToCells(int[] group) {
+        final Set<Cell> cells = new HashSet<>();
+        for (int element : group) {
+        }
+
+        return cells;
+    }
+}
+
+/**
+ * Model for the playfield. It is a value object.
+ */
+class PlayGround {
+    public static final int MAX_COL_NUMBER = 9;
+    public static final int MAX_ROW_NUMBER = 9;
+
+    private final int[][] matrix;
+    private final int[][] rows;
+    private final int[][] cols;
+    private final int[][][][] blocks;
+    private final int[][] groups;
+
+    public PlayGround(final int[][] initMatrix) {
+        if (initMatrix == null) {
+            throw new IllegalArgumentException("Input can not be null");
+        }
+
+        if (initMatrix.length != 9) {
+            throw new IllegalArgumentException("Number of rows must be 9.");
+        }
+        for (int[] rows : initMatrix) {
+            if (rows == null || rows.length != 9) {
+                throw new IllegalArgumentException("Number of elements in a row must be 9.");
+            }
+        }
+
+        this.matrix = Arrays.copyOf(initMatrix, initMatrix.length);
+        this.rows = new int[9][9];
+        this.cols = new int[9][9];
+        this.blocks = new int[3][3][3][3];
+        this.groups = new int[27][9];
+
+        calculateGroups();
+    }
+
+    public int[] getRow(final int position) {
+        if (position < 0 || position > MAX_ROW_NUMBER - 1) {
+            throw new IllegalArgumentException("Invalid row position: " + position);
+        }
+        return rows[position];
+    }
+
+    public int[] getCol(final int position) {
+        if (position < 0 || position > MAX_COL_NUMBER - 1) {
+            throw new IllegalArgumentException("Invalid col position: " + position);
+        }
+
+        return cols[position];
+    }
+
+    public int[][] getBlock(final int row, final int col) {
+        if (row < 0 || row > 2 || col < 0 || col > 2) {
+            throw new IllegalArgumentException("Invalid block position. Row:  " + row + " Col: " + col);
+        }
+
+        return blocks[row][col];
+    }
+
+    private void calculateGroups() {
+        int groupCounter = 0;
+        // rows
+        for (int position = 0; position < MAX_COL_NUMBER; position++) {
+            this.rows[position] = Arrays.copyOf(matrix[position], MAX_ROW_NUMBER);
+            groups[groupCounter++] = this.rows[position];
+        }
+
+        // cols
+        for (int position = 0; position < MAX_COL_NUMBER; position++) {
+            int[] col = new int[MAX_COL_NUMBER];
+            int pos = 0;
+            for (int[] row : matrix) {
+                col[pos] = row[position];
+                pos++;
+            }
+            cols[position] = col;
+            groups[groupCounter++] = col;
+        }
+
+        // blocks
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 3; col++) {
+                int[][] block = new int[3][3];
+                int currentRow = 0;
+                for (int rowNum = row * 3; rowNum < row * 3 + 3; rowNum++) {
+                    block[currentRow][0] = matrix[rowNum][col * 3];
+                    block[currentRow][1] = matrix[rowNum][col * 3 + 1];
+                    block[currentRow][2] = matrix[rowNum][col * 3 + 2];
+                    currentRow++;
+                }
+                blocks[row][col] = block;
+                groups[groupCounter++] = flatBlock(block);
+            }
+        }
+
+    }
+
+    private int[] flatBlock(int[][] block) {
+        int[] ret = new int[9];
+        int counter = 0;
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 3; col++) {
+                ret[counter++] = block[row][col];
+            }
+        }
+        return ret;
+    }
+
+    /**
+     * Zero field value is not allowed
+     *
+     * @return
+     */
+    boolean validateAsFinal() {
+        for (int[] group : groups) {
+            final Set<Integer> values = new HashSet<>(9);
+            for (int element : group) {
+                if (!values.add(element)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Zero field value is allowed
+     */
+    boolean validateAsNonFinal() {
+        for (int[] group : groups) {
+            final Set<Integer> values = new HashSet<>(9);
+            for (int element : group) {
+                if (element != 0) {
+                    if (!values.add(element)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+}
+
+/**
+ * A cell to store the possible values. It is immutable.
+ */
+class Cell {
+    private final int row;
+    private final int col;
+    private final String id;
+    private final Set<Integer> possibleValues = new HashSet<>(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9));
+
+    public Cell(final Cell cell) {
+        this.row = cell.row;
+        this.col = cell.col;
+        this.id = col + "" + row;
+        this.getPossibleValues().clear();
+        this.getPossibleValues().addAll(cell.getPossibleValues());
+    }
+
+    public Cell(final int row, final int col, final Set<Integer> initValues) {
+        this.row = row;
+        this.col = col;
+        this.id = row + "" + col;
+        if (initValues != null && initValues.size() != 0) {
+            this.possibleValues.clear();
+            this.possibleValues.addAll(initValues);
+        }
+    }
+
+    public Cell(final int row, final int col) {
+        this(row, col, new HashSet<>());
+    }
+
+    public Cell(final int row, final int col, final int initValue) {
+        this(row, col, new HashSet<>(Arrays.asList(initValue)));
+    }
+
+    public Set<Integer> getPossibleValues() {
+        return new HashSet<>(possibleValues);
+    }
+
+    public String getId() {
+        return row + "" + col;
+    }
+
+    public int getRow() {
+        return row;
+    }
+
+    public int getCol() {
+        return col;
+    }
+
+    public boolean isFinal() {
+        return getPossibleValues().size() == 1;
+    }
+
+    public Cell removePossibilities(final Set<Integer> possibilitiesToRemove) {
+        final Set<Integer> newPossibleValues = this.getPossibleValues();
+        newPossibleValues.removeAll(possibilitiesToRemove);
+        return new Cell(this.getRow(), this.getCol(), newPossibleValues);
+    }
+
+    public String fullToString() {
+        return "[" + this.row + "][" + this.col + "]" + toString();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Cell cell = (Cell) o;
+        return id.equals(cell.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+
+    @Override
+    public String toString() {
+        final StringBuilder ret = new StringBuilder();
+        ret.append("[");
+
+        for (int pv : possibleValues) {
+            ret.append(pv + ",");
+        }
+        for (int i = possibleValues.size(); i < 9; i++) {
+            ret.append(" ,");
+        }
+
+        ret.append("]");
+        return ret.toString();
     }
 }
