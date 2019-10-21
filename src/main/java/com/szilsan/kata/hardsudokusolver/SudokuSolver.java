@@ -452,7 +452,10 @@ class CellPlayGround {
 
     public CellPlayGround generateNewCellPlayGround(final Collection<Cell> newCells) {
         final Set<Cell> newAllCells = new HashSet<>(this.allCells);
-        newAllCells.addAll(newCells);
+        for (Cell c: newCells) {
+            newAllCells.remove(c);
+            newAllCells.add(c);
+        }
 
         return new CellPlayGround(newAllCells);
     }
@@ -470,6 +473,14 @@ class CellPlayGround {
         }
     }
 
+    public List<Cell> getRow(final int row) {
+        return rows.get(row);
+    }
+
+    public List<Cell> getCol(final int col) {
+        return cols.get(col);
+    }
+
     public static Set<Cell> getBlock(final Collection<Cell> cells, final int col, final int row) {
         final Set<Cell> result = new HashSet<>(9);
 
@@ -481,7 +492,7 @@ class CellPlayGround {
             }
         }
 
-        return result;
+        return Collections.unmodifiableSet(result);
     }
 
     public static List<Cell> getRow(final Collection<Cell> cells, final int row) {
@@ -490,16 +501,17 @@ class CellPlayGround {
             public int compare(Cell o1, Cell o2) {
                 return o1.getCol() > o2.getCol() ? 1 : -1;
             }
-        }).collect(Collectors.toList());
+        }).collect(Collectors.toUnmodifiableList());
     }
 
     public static List<Cell> getCol(final Collection<Cell> cells, final int col) {
+
         return cells.stream().filter(c -> c.getCol() == col).sorted(new Comparator<Cell>() {
             @Override
             public int compare(Cell o1, Cell o2) {
                 return o1.getRow() > o2.getRow() ? 1 : -1;
             }
-        }).collect(Collectors.toList());
+        }).collect(Collectors.toUnmodifiableList());
     }
 }
 
