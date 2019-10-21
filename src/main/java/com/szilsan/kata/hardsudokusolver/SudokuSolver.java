@@ -1,5 +1,7 @@
 package com.szilsan.kata.hardsudokusolver;
 
+import jdk.jshell.spi.ExecutionControl;
+
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -400,12 +402,111 @@ class SudokeConverter {
 
         return cells;
     }
+
+    public static Collection<Cell> convertMatrixPlayGround2Cells(final MatrixPlayGround matrixPlayGround) {
+        final Collection<Cell> retColl = new HashSet<>(27);
+        for (int rowCount = 0; rowCount < MatrixPlayGround.MAX_ROW_NUMBER; rowCount++) {
+            int[] row = matrixPlayGround.getRow(rowCount);
+            for (int colCount = 0; colCount < MatrixPlayGround.MAX_COL_NUMBER; colCount++) {
+                if (row[colCount] == 0) {
+                    retColl.add(new Cell(rowCount, colCount));
+                } else {
+                    retColl.add(new Cell(rowCount, colCount, row[colCount]));
+                }
+            }
+        }
+        return retColl;
+    }
+}
+
+class SudokuValidator {
+    public boolean validateMatrix(final MatrixPlayGround playGround, final boolean finalState) {
+        throw new UnsupportedOperationException();
+    }
+
+    public boolean validateCells(final CellPlayGround playGround, final boolean finalState) {
+        throw new UnsupportedOperationException();
+    }
+}
+
+/**
+ * Cell based model of the playfield.
+ * Is it fine to be immutable?
+ */
+class CellPlayGround {
+
+    private final List<List<Cell>> rows = new ArrayList<>(9);
+    private final List<List<Cell>> cols = new ArrayList<>(9);
+    private final Set<Set<Cell>> blocks = new HashSet<>(9);
+    private final Set<Cell> allCells = new HashSet<>(27);
+
+    public CellPlayGround(final MatrixPlayGround matrixPlayGround) {
+        allCells.addAll(SudokeConverter.convertMatrixPlayGround2Cells(matrixPlayGround));
+        splitCellsIntoColsRowsBlocks();
+    }
+
+    private CellPlayGround(final Set<Cell> allCells ) {
+        this.allCells.addAll(new HashSet<>(allCells));
+        splitCellsIntoColsRowsBlocks();
+    }
+
+    public CellPlayGround generateNewCellPlayGround(final Collection<Cell> newCells) {
+        final Set<Cell> newAllCells = new HashSet<>(this.allCells);
+        newAllCells.addAll(newCells);
+
+        return new CellPlayGround(newAllCells);
+    }
+
+    private void splitCellsIntoColsRowsBlocks() {
+        for (int i = 0; i < 9; i++) {
+            rows.add(getRow(this.allCells, i));
+            cols.add(getCol(this.allCells, i));
+        }
+
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                blocks.add(getBlock(this.allCells, i, j));
+            }
+        }
+    }
+
+    public static Set<Cell> getBlock(final Collection<Cell> cells, final int col, final int row) {
+        final Set<Cell> result = new HashSet<>(9);
+
+        for (Cell cell : cells) {
+            if (cell.getCol() >= col * 3 && cell.getCol() < (col + 1) * 3) {
+                if (cell.getRow() >= row * 3 && cell.getRow() < (row + 1) * 3) {
+                    result.add(cell);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    public static List<Cell> getRow(final Collection<Cell> cells, final int row) {
+        return cells.stream().filter(c -> c.getRow() == row).sorted(new Comparator<Cell>() {
+            @Override
+            public int compare(Cell o1, Cell o2) {
+                return o1.getCol() > o2.getCol() ? 1 : -1;
+            }
+        }).collect(Collectors.toList());
+    }
+
+    public static List<Cell> getCol(final Collection<Cell> cells, final int col) {
+        return cells.stream().filter(c -> c.getCol() == col).sorted(new Comparator<Cell>() {
+            @Override
+            public int compare(Cell o1, Cell o2) {
+                return o1.getRow() > o2.getRow() ? 1 : -1;
+            }
+        }).collect(Collectors.toList());
+    }
 }
 
 /**
  * Model for the playfield. It is a value object.
  */
-class PlayGround {
+class MatrixPlayGround {
     public static final int MAX_COL_NUMBER = 9;
     public static final int MAX_ROW_NUMBER = 9;
 
@@ -415,7 +516,7 @@ class PlayGround {
     private final int[][][][] blocks;
     private final int[][] groups;
 
-    public PlayGround(final int[][] initMatrix) {
+    public MatrixPlayGround(final int[][] initMatrix) {
         if (initMatrix == null) {
             throw new IllegalArgumentException("Input can not be null");
         }
@@ -630,9 +731,6 @@ class Cell {
 
         for (int pv : possibleValues) {
             ret.append(pv + ",");
-        }
-        for (int i = possibleValues.size(); i < 9; i++) {
-            ret.append(" ,");
         }
 
         ret.append("]");
