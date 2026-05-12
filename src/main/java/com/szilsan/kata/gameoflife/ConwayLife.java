@@ -9,7 +9,7 @@ public class ConwayLife {
         int[][] result = cells;
 
         for (int i = 0; i < generations; i++) {
-            result = calculateNextCycle(result)
+            result = calculateNextCycle(result);
         }
 
         return result;
